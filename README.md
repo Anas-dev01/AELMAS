@@ -1,104 +1,63 @@
 # AELMAS
 
-Automated Employee Leave Management System (AELMAS) for **Confluence University of Science and Technology, Osara, Kogi State (CUSTECH)**. The application manages staff leave applications from submission through HOD review and Registrar final approval.
+Automated Employee Leave Management System (AELMAS) is a web application for the **Confluence University of Science and Technology, Osara, Kogi State (CUSTECH)**. It supports a staff leave application from submission through HOD recommendation to the Registrar's final decision.
 
-## What the system does
+## Features
 
-- Staff register, sign in, see their leave balance, submit leave applications, track decisions, and download final approval letters.
-- HODs see pending applications and recommend or reject them.
-- Registrars see HOD-recommended applications, give the final decision, and enter final remarks.
-- Final approval deducts the requested days from the staff member’s leave balance.
-- Registrar registration requires an official PNG/JPEG signature. That signature is stored with the Registrar account and placed on the CUSTECH-branded PDF issued for approvals they finalise.
+- Role-specific registration and sign-in for Staff, HOD, and Registrar accounts.
+- Staff leave-balance display, application submission, status tracking, and approved-letter download.
+- HOD queue for recommending or rejecting pending requests.
+- Registrar queue for final approval or rejection, including remarks.
+- Automatic leave-balance deduction after final approval.
+- CUSTECH-branded PDF approval letters with the approving Registrar's uploaded PNG/JPEG signature.
+- Management leave register for dashboard analytics and PDF reports.
 
 ## Technology
 
 | Layer | Technology |
 | --- | --- |
-| Web client | React 19, Vite, React Router, Tailwind CSS, Axios |
-| PDF generation | jsPDF |
-| API | Node.js, Express 5, CORS, bcrypt |
-| Database | MySQL via mysql2 |
+| Client | React 19, Vite, React Router, Tailwind CSS, Axios |
+| PDF | jsPDF |
+| API | Node.js, Express, CORS, bcrypt |
+| Database | MySQL/MariaDB via mysql2 |
 
 ## Repository layout
 
 ```text
-client/                 React/Vite web client
-server/                 Express API
-server/index.js         API routes and startup migration
-docs/database-schema.sql Database migration for approval-letter support
-docs/DIAGRAM_PROMPTS.md Prompts for architecture and ER diagrams
+client/                     React/Vite client
+server/                     Express API
+server/index.js             API routes and database startup migration
+aelmas_db.sql               Development database schema and sample data
+docs/database-schema.sql    Migration for existing databases
+docs/DIAGRAM_PROMPTS.md     Architecture and ER-diagram prompts
 ```
+
+`aelmas_db_backup.sql` is currently an identical copy of `aelmas_db.sql`. Keep either database dump private: it contains sample account records and a Registrar signature image.
 
 ## Prerequisites
 
-- Node.js 18 or later
-- MySQL 8+ (or a compatible MySQL/MariaDB installation)
-- An existing database named `aelmas_db` containing the base `users` and `leave_requests` tables
+- A current Node.js LTS release (Node 22 was used to verify this project)
+- MySQL 8+ or MariaDB 10.4+
+- npm (included with Node.js)
 
-## Move the project to a Windows PC
+## Run locally
 
-Use this checklist to move both the application files and its data. The project files alone are **not** enough: the MySQL database contains the user accounts, leave applications, and Registrar signatures.
+### 1. Create and import the database
 
-### 1. Export the database on the current computer
-
-Export `aelmas_db` before moving the project. This produces a single backup file that includes the tables and their data.
+The included dump creates the application tables and includes development sample data. Create the database first, then import the dump:
 
 ```bash
-mysqldump -u root -p --databases aelmas_db > aelmas_db_backup.sql
+mysql -u root -p -e "CREATE DATABASE aelmas_db"
+mysql -u root -p aelmas_db < aelmas_db.sql
 ```
 
-Enter the MySQL password when prompted. With the usual local XAMPP setup, the password is blank: press Enter when prompted. Alternatively, open phpMyAdmin, select `aelmas_db`, choose **Export** → **Quick** → **SQL**, then save the downloaded file as `aelmas_db_backup.sql`.
+If `aelmas_db` already exists and you want a fresh development copy, drop it yourself only after confirming that its data is disposable, then repeat the commands above. In phpMyAdmin, create/select `aelmas_db`, choose **Import**, and select `aelmas_db.sql`.
 
-Keep this SQL backup private. It contains account data and registrar signatures.
+For an existing AELMAS database, do not re-import the full dump. The API adds `users.registrar_signature` and `leave_requests.registrar_id` at startup. If its database account cannot alter tables, run [docs/database-schema.sql](docs/database-schema.sql) once as a database administrator.
 
-### 2. Copy the project and backup file
+### 2. Configure the database connection
 
-Copy the project folder and `aelmas_db_backup.sql` to the Windows computer using a USB drive, cloud storage, or Git. Do not copy `client/node_modules` or `server/node_modules`; Windows will install its own compatible dependencies from each `package-lock.json` file.
-
-If creating a ZIP file, exclude the two `node_modules` folders. Keep `client`, `server`, `docs`, `signature.jpeg`, and the root `README.md`.
-
-### 3. Install the Windows prerequisites
-
-1. Install Node.js 18 or later (the current LTS release is a good choice).
-2. Install XAMPP, then open the XAMPP Control Panel and start **MySQL**. Apache is optional for this development setup.
-3. Open PowerShell in the copied project folder.
-4. Install the project dependencies:
-
-```powershell
-cd server
-npm ci
-cd ..\client
-npm ci
-```
-
-`npm ci` uses the locked dependency versions supplied with this project. If it reports that the lock file is incompatible, use `npm install` in the affected folder instead.
-
-### 4. Restore the database on Windows
-
-With MySQL running, use either of the following methods.
-
-**phpMyAdmin method (recommended)**
-
-1. Visit `http://localhost/phpmyadmin`.
-2. Select the **Import** tab.
-3. Choose `aelmas_db_backup.sql` and click **Import**.
-4. Confirm that `aelmas_db` appears in the left sidebar and contains `users` and `leave_requests`.
-
-**PowerShell method**
-
-Run this from the folder that contains the backup (change the path if XAMPP was installed elsewhere):
-
-```powershell
-Get-Content .\aelmas_db_backup.sql | & "C:\xampp\mysql\bin\mysql.exe" -u root -p
-```
-
-Press Enter at the password prompt if the local XAMPP `root` account has no password. The backup was exported with `--databases`, so it creates and selects `aelmas_db` during import.
-
-> This repository includes only the two later approval-letter migrations, not a clean-database definition of the original `users` and `leave_requests` tables. For a complete working copy, restore the backup from the current computer instead of creating an empty `aelmas_db` database.
-
-### 5. Verify the database connection and start the app
-
-The development credentials are in `server/index.js`:
+The development connection is currently hard-coded in [server/index.js](server/index.js):
 
 ```js
 host: 'localhost',
@@ -107,83 +66,93 @@ password: '',
 database: 'aelmas_db'
 ```
 
-If your Windows MySQL account has a password or uses a different host/user/database, update these values before starting the API. Then open two PowerShell windows in the project folder:
+Update these values for your local MySQL/MariaDB account before starting the API. Do not commit real passwords.
 
-```powershell
-cd server
-node index.js
-```
+### 3. Install dependencies
 
-```powershell
-cd client
-npm run dev
-```
-
-The API should report `Connected to AELMAS MySQL Database.` Open the Vite address shown by the client (normally `http://localhost:5173`), register or sign in, and submit a test request to confirm both the client and database work.
-
-## Database configuration
-
-The current development connection is configured in `server/index.js` for local XAMPP defaults: host `localhost`, user `root`, blank password, database `aelmas_db`. Change these values before using another environment. Never commit production passwords.
-
-On startup, the API adds the two columns needed by the official letter: `users.registrar_signature` and `leave_requests.registrar_id`. If the database user cannot alter tables, run [docs/database-schema.sql](docs/database-schema.sql) once as a database administrator.
-
-## Run locally
-
-Install dependencies in both `server` and `client` with `npm ci`, then use two terminals:
+Run the following from the repository root:
 
 ```bash
-cd server
-node index.js
+npm --prefix server ci
+npm --prefix client ci
+```
+
+### 4. Start the application
+
+Use two terminals:
+
+```bash
+node server/index.js
 ```
 
 ```bash
-cd client
-npm run dev
+npm --prefix client run dev
 ```
 
-Open the Vite address shown in the terminal (normally `http://localhost:5173`). The client expects the API at `http://localhost:5000`.
+The API runs at `http://localhost:5000`. Open the Vite URL printed by the client—normally `http://localhost:5173`—in a browser.
 
 ## User workflow
 
-1. Register as Staff, HOD, or Registrar. A Registrar must upload a clear PNG or JPEG signature up to 1.5 MB.
-2. Staff submit a leave request. New requests start at status `0` (Pending HOD).
-3. HOD recommends (status `1`) or rejects (status `3`) the request.
-4. Registrar finally approves (status `2`) or rejects (status `3`) it. Approval saves the Registrar ID and deducts the leave days.
-5. The Staff portal enables **PDF Letter** only for a final approval. The generated letter includes the CUSTECH letterhead, application/leave/resumption dates, official wording, and the signing Registrar’s signature.
+1. Register as Staff, HOD, or Registrar. Registrar registration requires a PNG/JPEG signature image no larger than 1.5 MB.
+2. A Staff user submits a leave request, which starts as **Pending HOD**.
+3. The HOD recommends it to the Registrar or rejects it with remarks.
+4. The Registrar grants final approval or rejects it with remarks. Final approval deducts the requested days from the staff member’s leave balance.
+5. For approved requests, the Staff portal provides a downloadable official PDF letter bearing the approving Registrar’s signature.
+
+| `status_stage` | Meaning |
+| --- | --- |
+| `0` | Pending HOD |
+| `1` | Recommended by HOD / awaiting Registrar |
+| `2` | Finally approved |
+| `3` | Rejected |
 
 ## API overview
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| POST | `/api/register` | Create a user; Registrar registration accepts `signature_data` |
+| POST | `/api/register` | Create a user; Registrars must provide `signature_data` |
 | POST | `/api/login` | Authenticate and return user details |
 | POST | `/api/leave-request` | Submit a staff leave application |
-| GET | `/api/my-requests/:userId` | Get a staff member’s requests and linked Registrar signature |
-| GET | `/api/leave-requests/pending` | Get HOD review queue |
+| GET | `/api/my-requests/:userId` | Get a staff member’s requests and approval-signature data |
+| GET | `/api/leave-requests/pending` | Get the HOD review queue |
 | POST | `/api/leave-requests/approve-hod` | Recommend an application |
-| GET | `/api/leave-requests/recommended` | Get Registrar final-approval queue |
-| GET | `/api/leave-requests/report` | Get the complete leave register for HOD/Registrar analytics and PDF reports |
-| POST | `/api/leave-requests/approve-final` | Finalise approval and deduct balance |
-| POST | `/api/leave-requests/reject` | Reject as HOD or Registrar |
+| POST | `/api/leave-requests/reject` | Reject an application as HOD or Registrar |
+| GET | `/api/leave-requests/recommended` | Get the Registrar approval queue |
+| POST | `/api/leave-requests/approve-final` | Finalise approval and deduct leave balance |
+| GET | `/api/leave-requests/report` | Get the leave register for reports/analytics |
+| GET | `/api/user-data/:userId` | Get a user’s current leave balance |
 
-## Official approval letter
+## Move to another computer
 
-The downloadable PDF bears this letterhead:
+Copy the repository and **one** database dump (`aelmas_db.sql` or a freshly exported backup). Do not copy either `node_modules` directory; run the dependency-install commands above on the destination computer. Install Node.js and MySQL/MariaDB there, import the database, update `server/index.js` if its MySQL credentials differ, and start the two services.
 
-```text
-CONFLUENCE UNIVERSITY OF SCIENCE AND TECHNOLOGY, OSARA, KOGI STATE
-OFFICIAL LEAVE MANAGEMENT SYSTEM
-OFFICIAL APPROVAL LETTER
+To preserve live data rather than the bundled sample data, export it from the source computer first:
+
+```bash
+mysqldump -u root -p --databases aelmas_db > aelmas_db_backup.sql
 ```
 
-The document formally acknowledges the application, lists leave commencement/end and resumption dates, requests a proper handover of responsibilities, and carries the `REGISTRAR` signature block.
+On Windows with XAMPP, you can import the backup through phpMyAdmin or run:
+
+```powershell
+Get-Content .\aelmas_db_backup.sql | & "C:\xampp\mysql\bin\mysql.exe" -u root -p
+```
+
+## Quality checks
+
+After installing client dependencies, run:
+
+```bash
+npm --prefix client run lint
+npm --prefix client run build
+```
+
+The server package does not currently include automated tests.
 
 ## Diagrams
 
-Copy the ready-to-use architecture and entity-relationship diagram prompts from [docs/DIAGRAM_PROMPTS.md](docs/DIAGRAM_PROMPTS.md) into your preferred diagram-generation tool.
+Use the ready-to-copy prompts in [docs/DIAGRAM_PROMPTS.md](docs/DIAGRAM_PROMPTS.md) with your preferred diagram-generation tool.
 
-## Important production notes
+## Production considerations
 
-- This project currently uses direct database credentials in code and has no token/session protection on API routes. Use environment variables, authentication middleware, role verification, HTTPS, and server-side authorisation before deployment.
-- Restrict Registrar account creation in production; an open Registrar signup route is only appropriate for a demo.
-- Store signatures in protected object storage rather than a database data URL for a large-scale deployment, and retain an audit trail for approvals.
+This repository is suitable for local development or demonstration. Before deployment, implement environment-based secrets, authentication/session handling, role-based server-side authorisation, input validation, HTTPS, transactional approval/balance updates, audit logging, and protected signature storage. Registrar self-registration should also be restricted in production.
